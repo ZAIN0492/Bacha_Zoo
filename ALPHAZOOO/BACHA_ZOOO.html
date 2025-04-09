@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NumberQuest Adventure</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Comic Sans MS', cursive;
+            overflow: hidden;
+            transition: background-color 1s ease;
+        }
+        #game-container {
+            position: relative;
+            width: 900px;
+            height: 650px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 30px;
+            text-align: center;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        #background-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.1;
+            z-index: -1;
+            background: url('https://images.unsplash.com/photo-1517487881594-2787fef0ebf7?auto=format&fit=crop&q=80&w=800') repeat;
+            animation: slide 30s infinite linear;
+        }
+        @keyframes slide {
+            0% { background-position: 0 0; }
+            100% { background-position: 200% 200%; }
+        }
+        #start-screen, #game-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        #start-screen h1 {
+            font-size: 60px;
+            color: #ff4500;
+            text-shadow: 2px 2px 5px #ffd700;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+        #start-screen button {
+            padding: 20px 40px;
+            font-size: 24px;
+            margin: 15px;
+            border: none;
+            border-radius: 15px;
+            background: #ff69b4;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s;
+        }
+        #start-screen button:hover {
+            background: #ff1493;
+            transform: scale(1.1);
+        }
+        #start-screen input[type="file"], #start-screen input[type="text"] {
+            margin: 10px;
+            font-size: 18px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #number {
+            font-size: 120px;
+            color: #ff00ff;
+            text-shadow: 3px 3px 10px #00b7eb;
+            margin: 20px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        #number-word {
+            font-size: 36px;
+            font-weight: bold;
+            padding: 20px;
+            background: rgba(255, 215, 0, 0.8);
+            border-radius: 15px;
+            border: 3px solid #ffd700;
+            color: #333;
+            max-width: 300px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        #number-input {
+            font-size: 24px;
+            padding: 10px;
+            margin: 20px;
+            width: 100px;
+            text-align: center;
+            border: 3px solid #ffd700;
+            border-radius: 10px;
+            background: #fff;
+            outline: none;
+        }
+        #number-input:focus {
+            border-color: #ff69b4;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: #333;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .correct { color: #32cd32; font-weight: bold; }
+        .wrong { color: #ff4500; font-weight: bold; }
+        #player-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: center;
+        }
+        #player-pic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+        }
+        #player-name {
+            font-size: 18px;
+            color: #333;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        #message {
+            font-size: 24px;
+            color: #32cd32;
+            margin: 10px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #game-screen { display: none; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="background-pattern"></div>
+        <div id="start-screen">
+            <h1>NumberQuest Adventure</h1>
+            <input type="file" id="player-upload" accept="image/*" onchange="loadPlayerPic()">
+            <input type="text" id="player-name-input" placeholder="Enter your name" maxlength="20">
+            <button onclick="startGame(true)">Play in Order</button>
+            <button onclick="startGame(false)">Play Random</button>
+        </div>
+        <div id="game-screen">
+            <div id="score">
+                <span class="correct">Correct: <span id="correct">0</span></span> | 
+                <span class="wrong">Wrong: <span id="wrong">0</span></span>
+            </div>
+            <div id="player-container">
+                <img id="player-pic" src="" alt="Player" style="display: none;">
+                <div id="player-name"></div>
+            </div>
+            <div id="number"></div>
+            <div id="number-word"></div>
+            <input type="text" id="number-input" maxlength="3" placeholder="Type here">
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+        const numberWords = {
+            1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE',
+            6: 'SIX', 7: 'SEVEN', 8: 'EIGHT', 9: 'NINE', 10: 'TEN',
+            11: 'ELEVEN', 12: 'TWELVE', 13: 'THIRTEEN', 14: 'FOURTEEN', 15: 'FIFTEEN',
+            16: 'SIXTEEN', 17: 'SEVENTEEN', 18: 'EIGHTEEN', 19: 'NINETEEN', 20: 'TWENTY',
+            21: 'TWENTY-ONE', 22: 'TWENTY-TWO', 23: 'TWENTY-THREE', 24: 'TWENTY-FOUR', 25: 'TWENTY-FIVE',
+            26: 'TWENTY-SIX', 27: 'TWENTY-SEVEN', 28: 'TWENTY-EIGHT', 29: 'TWENTY-NINE', 30: 'THIRTY',
+            31: 'THIRTY-ONE', 32: 'THIRTY-TWO', 33: 'THIRTY-THREE', 34: 'THIRTY-FOUR', 35: 'THIRTY-FIVE',
+            36: 'THIRTY-SIX', 37: 'THIRTY-SEVEN', 38: 'THIRTY-EIGHT', 39: 'THIRTY-NINE', 40: 'FORTY',
+            41: 'FORTY-ONE', 42: 'FORTY-TWO', 43: 'FORTY-THREE', 44: 'FORTY-FOUR', 45: 'FORTY-FIVE',
+            46: 'FORTY-SIX', 47: 'FORTY-SEVEN', 48: 'FORTY-EIGHT', 49: 'FORTY-NINE', 50: 'FIFTY',
+            51: 'FIFTY-ONE', 52: 'FIFTY-TWO', 53: 'FIFTY-THREE', 54: 'FIFTY-FOUR', 55: 'FIFTY-FIVE',
+            56: 'FIFTY-SIX', 57: 'FIFTY-SEVEN', 58: 'FIFTY-EIGHT', 59: 'FIFTY-NINE', 60: 'SIXTY',
+            61: 'SIXTY-ONE', 62: 'SIXTY-TWO', 63: 'SIXTY-THREE', 64: 'SIXTY-FOUR', 65: 'SIXTY-FIVE',
+            66: 'SIXTY-SIX', 67: 'SIXTY-SEVEN', 68: 'SIXTY-EIGHT', 69: 'SIXTY-NINE', 70: 'SEVENTY',
+            71: 'SEVENTY-ONE', 72: 'SEVENTY-TWO', 73: 'SEVENTY-THREE', 74: 'SEVENTY-FOUR', 75: 'SEVENTY-FIVE',
+            76: 'SEVENTY-SIX', 77: 'SEVENTY-SEVEN', 78: 'SEVENTY-EIGHT', 79: 'SEVENTY-NINE', 80: 'EIGHTY',
+            81: 'EIGHTY-ONE', 82: 'EIGHTY-TWO', 83: 'EIGHTY-THREE', 84: 'EIGHTY-FOUR', 85: 'EIGHTY-FIVE',
+            86: 'EIGHTY-SIX', 87: 'EIGHTY-SEVEN', 88: 'EIGHTY-EIGHT', 89: 'EIGHTY-NINE', 90: 'NINETY',
+            91: 'NINETY-ONE', 92: 'NINETY-TWO', 93: 'NINETY-THREE', 94: 'NINETY-FOUR', 95: 'NINETY-FIVE',
+            96: 'NINETY-SIX', 97: 'NINETY-SEVEN', 98: 'NINETY-EIGHT', 99: 'NINETY-NINE', 100: 'ONE HUNDRED'
+        };
+
+        const colors = [
+            '#ffb6c1', '#87ceeb', '#98fb98', '#ffa07a', '#e6e6fa',
+            '#f0e68c', '#dda0dd', '#add8e6', '#f08080', '#d3d3d3'
+        ];
+
+        let currentIndex = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        let isSequential = true;
+        let usedNumbers = [];
+        let playerName = '';
+        const synth = window.speechSynthesis;
+
+        function loadPlayerPic() {
+            const fileInput = document.getElementById('player-upload');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('player-pic').src = e.target.result;
+                    document.getElementById('player-pic').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function startGame(sequential) {
+            isSequential = sequential;
+            playerName = document.getElementById('player-name-input').value.trim() || 'Player';
+            document.getElementById('player-name').textContent = playerName;
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            showNextNumber();
+            document.getElementById('number-input').focus();
+            document.getElementById('number-input').addEventListener('input', handleInput);
+        }
+
+        function showNextNumber() {
+            let number;
+            if (isSequential) {
+                if (currentIndex >= numbers.length) {
+                    endGame();
+                    return;
+                }
+                number = numbers[currentIndex];
+                currentIndex++;
+            } else {
+                if (usedNumbers.length === numbers.length) {
+                    endGame();
+                    return;
+                }
+                do {
+                    number = numbers[Math.floor(Math.random() * numbers.length)];
+                } while (usedNumbers.includes(number));
+                usedNumbers.push(number);
+            }
+
+            document.getElementById('number').textContent = number;
+            document.getElementById('number-word').textContent = numberWords[number];
+            document.getElementById('message').style.opacity = '0';
+            document.getElementById('number-input').value = ''; // Clear input
+
+            const colorIndex = (currentIndex - 1) % colors.length;
+            document.body.style.backgroundColor = colors[colorIndex];
+        }
+
+        function speakNumber(number) {
+            const utterance = new SpeechSynthesisUtterance(`${number} for ${numberWords[number]}`);
+            utterance.volume = 1.0; // Maximum volume
+            utterance.rate = 0.7;   // Slower for clarity
+            utterance.pitch = 1.0;  // Normal pitch for clear, loud sound
+            synth.speak(utterance);
+        }
+
+        function showMessage() {
+            const message = document.getElementById('message');
+            message.textContent = 'Well Done Imad Zain U Din';
+            message.style.opacity = '1';
+            setTimeout(() => {
+                message.style.opacity = '0';
+            }, 1500);
+        }
+
+        function handleInput(event) {
+            const enteredValue = event.target.value.trim();
+            const currentNumber = document.getElementById('number').textContent;
+
+            if (enteredValue === currentNumber) {
+                correctCount++;
+                document.getElementById('correct').textContent = correctCount;
+                speakNumber(currentNumber);
+                showMessage();
+                document.getElementById('number-word').style.transform = 'rotate(360deg)';
+                setTimeout(() => {
+                    document.getElementById('number-word').style.transform = 'rotate(0deg)';
+                    showNextNumber();
+                }, 500);
+            } else if (enteredValue.length === currentNumber.length) {
+                // If the input length matches but it's wrong
+                wrongCount++;
+                document.getElementById('wrong').textContent = wrongCount;
+                document.getElementById('number-word').style.transform = 'translateX(-10px)';
+                setTimeout(() => {
+                    document.getElementById('number-word').style.transform = 'translateX(0)';
+                    document.getElementById('number-input').value = ''; // Clear wrong input
+                }, 100);
+            }
+        }
+
+        function endGame() {
+            document.getElementById('game-screen').innerHTML = `
+                <h1 style="color: #ff4500; animation: bounce 2s infinite;">Well Done!</h1>
+                <p>Correct: ${correctCount} | Wrong: ${wrongCount}</p>
+                <button onclick="location.reload()" style="background: #ff69b4; padding: 15px 30px; font-size: 20px; border-radius: 10px; color: white;">Play Again</button>
+            `;
+            document.getElementById('number-input').removeEventListener('input', handleInput);
+        }
+    </script>
+</body>
+</html>
